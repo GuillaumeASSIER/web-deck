@@ -345,6 +345,22 @@ est dans
 La commande complète passée au navigateur y est écrite en clair, ce qui permet
 de la rejouer à la main.
 
+### Script de diagnostic
+
+`scripts/swl-debug.sh` fait le tour complet en un seul passage, en lecture
+seule : session graphique, AppImage et FUSE, existence du lanceur installé,
+navigateurs Chromium, contenu réel des raccourcis Steam, cohérence entre les
+raccourcis et le registre, journaux, puis rejeu exact de la commande que Steam
+exécute (`swl launch <slug>`) dans le terminal, là où l'erreur est enfin
+visible. Le rapport est écrit dans `~/swl-debug.txt`.
+
+```sh
+bash scripts/swl-debug.sh
+```
+
+Il ouvre une fenêtre de jeu, jusqu'à 25 secondes par jeu. C'est le seul test
+intrusif, et c'est celui qui donne la réponse. Rien n'est écrit dans Steam.
+
 | Symptôme | Cause probable |
 |---|---|
 | L'ajout est refusé | Steam tourne : ferme-le complètement |
