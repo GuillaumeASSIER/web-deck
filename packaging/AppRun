@@ -1,0 +1,9 @@
+#!/bin/sh
+# AppRun : point d'entrée de l'AppImage.
+#
+# Le binaire embarqué est statique : il n'y a rien à préparer. On se contente
+# de transmettre les arguments en conservant l'environnement intact, car le
+# lancement du navigateur dépend de DISPLAY, WAYLAND_DISPLAY, XDG_RUNTIME_DIR
+# et de la base udev.
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/usr/bin/swl" "$@"

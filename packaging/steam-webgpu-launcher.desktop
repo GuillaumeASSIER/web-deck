@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=DeckWebGPU
+GenericName=Lanceur de jeux web WebGPU
+Comment=Enregistrer des jeux web dans Steam et les lancer en plein écran
+# Terminal=false : l'action par défaut est l'interface graphique. Le mode
+# terminal reste accessible avec « swl cli ».
+Exec=swl gui
+Icon=steam-webgpu-launcher
+Terminal=false
+Categories=Utility;Game;
+Keywords=Steam;Steam Deck;WebGPU;Chromium;Manette;

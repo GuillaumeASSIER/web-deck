@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeckWebGPU</title>
+<style>
+  :root {
+    --bg: #101418;
+    --card: #1a2027;
+    --line: #2a323c;
+    --text: #e6ebf0;
+    --dim: #93a1b0;
+    --accent: #4f9cf9;
+    --danger: #e5534b;
+    --ok: #3fb950;
+    --warn: #d29922;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px;
+    background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    max-width: 820px; margin-inline: auto;
+  }
+  h1 { font-size: 21px; margin: 0 0 2px; letter-spacing: -0.01em; }
+  h2 { font-size: 15px; margin: 0 0 12px; color: var(--dim); font-weight: 600;
+       text-transform: uppercase; letter-spacing: 0.06em; }
+  .sub { color: var(--dim); margin: 0 0 20px; font-size: 14px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px; margin-bottom: 16px;
+  }
+  .status { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; font-size: 14px; }
+  .status div { display: flex; gap: 8px; align-items: baseline; }
+  .status .k { color: var(--dim); min-width: 84px; }
+  .pill {
+    font-size: 12px; padding: 1px 8px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--dim);
+  }
+  .pill.ok { color: var(--ok); border-color: #1f4d29; background: #122a17; }
+  .pill.bad { color: var(--danger); border-color: #5a2723; background: #2a1513; }
+  .pill.warn { color: var(--warn); border-color: #4d3d17; background: #2a2413; }
+  textarea {
+    width: 100%; min-height: 130px; resize: vertical;
+    background: #0d1116; color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px; font: 13px/1.6 ui-monospace, "JetBrains Mono", Menlo, monospace;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .hint { color: var(--dim); font-size: 13px; margin: 0 0 10px; }
+  code { background: #0d1116; border: 1px solid var(--line);
+         padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  button {
+    background: #232b34; color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 16px; font-size: 14px; cursor: pointer;
+  }
+  button:hover { background: #2b343e; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #08121d; font-weight: 600; }
+  button.primary:hover { filter: brightness(1.08); }
+  button.danger { color: var(--danger); }
+  button.small { padding: 4px 10px; font-size: 13px; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  label.chk { color: var(--dim); font-size: 13px; display: flex; gap: 6px; align-items: center; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--dim); font-weight: 500; font-size: 12px;
+       text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 6px; }
+  td { padding: 7px 8px 7px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  .url { color: var(--dim); font-size: 13px; word-break: break-all; }
+  .banner {
+    display: flex; gap: 12px; align-items: center; justify-content: space-between;
+    background: #2a2413; border: 1px solid #4d3d17; color: #f0d690;
+    border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 14px;
+  }
+  pre.log {
+    background: #0d1116; border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px; font-size: 12.5px; line-height: 1.6; white-space: pre-wrap;
+    max-height: 260px; overflow: auto; margin: 0 0 16px;
+  }
+  pre.log.err { border-color: #5a2723; }
+  .muted { color: var(--dim); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1>DeckWebGPU</h1>
+<p class="sub">Enregistrer des jeux web dans Steam, puis les lancer en plein écran.</p>
+
+<div id="banner"></div>
+
+<div class="card">
+  <h2>État</h2>
+  <div class="status" id="status"></div>
+</div>
+
+<pre class="log" id="log" hidden></pre>
+
+<div class="card">
+  <h2>Ajouter des jeux</h2>
+  <p class="hint">
+    Une ligne par jeu : <code>Nom = https://exemple.com/jeu</code>.
+    Les lignes vides et celles commençant par <code>#</code> sont ignorées.
+  </p>
+  <textarea id="list" spellcheck="false" placeholder="Mon Jeu = https://exemple.com/jeu"></textarea>
+  <div class="row">
+    <button class="primary" id="add">Ajouter à Steam</button>
+    <label class="chk"><input type="checkbox" id="dry"> simulation, ne rien écrire</label>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Jeux enregistrés</h2>
+  <div id="games"></div>
+</div>
+
+<div class="row">
+  <button id="quit">Fermer cette fenêtre</button>
+  <span class="muted" id="paths"></span>
+</div>
+<p class="muted" id="quit-hint" hidden>
+  Fermeture refusée par le navigateur : utilise la croix de la fenêtre. Le
+  service s'arrête avec elle.
+</p>
+
+<script>
+const token = new URLSearchParams(location.search).get('t') || '';
+const el = (id) => document.getElementById(id);
+
+async function api(path, body) {
+  const res = await fetch('/api/' + path + '?t=' + encodeURIComponent(token), body ? {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  } : {});
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+function pill(text, kind) {
+  return '<span class="pill ' + (kind || '') + '">' + text + '</span>';
+}
+
+function renderStatus(s) {
+  const steam = s.steam_running
+    ? pill('en cours', 'bad')
+    : pill('arrêté', 'ok');
+  const rows = [
+    ['Steam', steam + ' <span class="url">' + (s.steam_root || 'introuvable') + '</span>'],
+    ['Raccourcis', s.shortcut_count + ' entrée(s)'],
+    ['Navigateur', s.browser_error ? pill(s.browser_error, 'bad') : (s.browser_label + ' ' + (s.browser_version || ''))],
+  ];
+  if (!s.browser_error) {
+    // Sans sandbox flatpak, l'accès à /run/udev va de soi.
+    rows.push(['Manette', s.udev_ok ? pill('accès udev accordé', 'ok') : pill('accès udev manquant', 'warn')]);
+  }
+  if (s.steam_error) rows.push(['Profil', s.steam_error]);
+  el('status').innerHTML = rows.map(([k, v]) =>
+    '<div><span class="k">' + k + '</span><span>' + v + '</span></div>').join('');
+
+  if (s.steam_running) {
+    el('banner').innerHTML =
+      '<div><b>Steam est en cours d\'exécution.</b><br>' +
+      'Steam réécrit ses raccourcis à sa fermeture, donc un ajout maintenant serait perdu sans avertissement.</div>' +
+      '<button id="shut" class="danger">Fermer Steam</button>';
+    el('shut').onclick = async () => {
+      el('shut').disabled = true;
+      showLog('Fermeture de Steam en cours...', false);
+      const r = await api('steam/shutdown', {});
+      apply(r);
+    };
+  } else {
+    el('banner').innerHTML = '';
+  }
+}
+
+function renderGames(games) {
+  if (!games || !games.length) {
+    el('games').innerHTML = '<p class="muted">Aucun jeu enregistré pour le moment.</p>';
+    return;
+  }
+  let html = '<table><thead><tr><th>Nom</th><th>URL</th><th>AppID</th><th></th></tr></thead><tbody>';
+  for (const g of games) {
+    html += '<tr><td>' + esc(g.name) + '</td>' +
+      '<td class="url">' + esc(g.url) + '</td>' +
+      '<td class="url">' + g.appid + '</td>' +
+      '<td style="white-space:nowrap;text-align:right">' +
+      '<button class="small" data-test="' + esc(g.slug) + '">Ouvrir</button> ' +
+      '<button class="small danger" data-rm="' + esc(g.slug) + '">Retirer</button>' +
+      '</td></tr>';
+  }
+  html += '</tbody></table>';
+  el('games').innerHTML = html;
+
+  el('games').querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
+    const slug = b.getAttribute('data-rm');
+    if (!confirm('Retirer "' + slug + '" de Steam ?')) return;
+    b.disabled = true;
+    const r = await api('remove', { slugs: [slug] });
+    apply(r);
+  });
+  el('games').querySelectorAll('[data-test]').forEach(b => b.onclick = async () => {
+    const r = await api('test', { slug: b.getAttribute('data-test') });
+    apply(r);
+  });
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function showLog(text, isError) {
+  el('log').hidden = false;
+  el('log').className = 'log' + (isError ? ' err' : '');
+  el('log').textContent = text;
+}
+
+function apply(r) {
+  if (r.state) applyState(r.state);
+  const o = r.outcome;
+  if (!o) return;
+  const parts = [];
+  if (o.log) parts.push(o.log);
+  if (o.error) parts.push('Erreur : ' + o.error);
+  showLog(parts.join('\n') || 'Terminé.', !!o.error);
+}
+
+function applyState(s) {
+  renderStatus(s);
+  renderGames(s.games);
+  el('paths').textContent = s.data_dir || '';
+  if (s.defaults && !el('list').value) el('list').value = s.defaults;
+}
+
+el('add').onclick = async () => {
+  el('add').disabled = true;
+  try {
+    const r = await api('add', {
+      text: el('list').value,
+      dry_run: el('dry').checked
+    });
+    apply(r);
+    if (!el('dry').checked && r.outcome && r.outcome.added > 0) {
+      el('list').value = '';
+    }
+  } catch (e) {
+    showLog(String(e), true);
+  } finally {
+    el('add').disabled = false;
+  }
+};
+
+// Une fenêtre ouverte par le navigateur lui-même (mode application) peut
+// refuser window.close() : c'est au navigateur de décider. Si la page est
+// encore là après un court délai, on explique quoi faire.
+el('quit').onclick = () => {
+  window.close();
+  setTimeout(() => { el('quit-hint').hidden = false; }, 400);
+};
+
+api('state').then(applyState).catch(e => showLog(String(e), true));
+</script>
+</body>
+</html>
